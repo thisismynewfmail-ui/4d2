@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>tex preview</title>
+<style>body{background:#15131c;color:#ddd;font:12px monospace;margin:0;padding:12px}
+.g{display:flex;flex-wrap:wrap;gap:8px}.c{text-align:center;width:76px}
+canvas{image-rendering:pixelated;border:1px solid #333}
+h2{color:#8f6adf}</style></head><body>
+<h2 id="h">building…</h2><div class="g" id="g"></div>
+<script type="module">
+import { buildAtlas, atlas } from '../../src/world/atlas.js';
+import { ITEMS } from '../../src/world/items.js';
+buildAtlas();
+const g = document.getElementById('g');
+const mode = new URLSearchParams(location.search).get('mode') || 'tex';
+if (mode === 'tex') {
+  for (const [name, p] of Object.entries(atlas.painters)) {
+    const d = document.createElement('div'); d.className='c';
+    const c = document.createElement('canvas'); c.width=c.height=16;
+    c.style.width=c.style.height='64px';
+    c.getContext('2d').putImageData(p.toImageData(),0,0);
+    d.appendChild(c); const l=document.createElement('div'); l.textContent=name; l.style.fontSize='9px'; d.appendChild(l);
+    g.appendChild(d);
+  }
+  document.getElementById('h').textContent = 'tiles: ' + atlas.count;
+} else {
+  for (const [name] of Object.entries(ITEMS)) {
+    const d = document.createElement('div'); d.className='c';
+    const img = new Image(); img.src = atlas.iconURL[name]; img.style.width='64px'; img.style.imageRendering='pixelated';
+    d.appendChild(img); const l=document.createElement('div'); l.textContent=name; l.style.fontSize='9px'; d.appendChild(l);
+    g.appendChild(d);
+  }
+  document.getElementById('h').textContent = 'icons: ' + Object.keys(ITEMS).length;
+}
+window.__ready = true;
+</script></body></html>

@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const [,, url, out, fullArg] = process.argv;
+const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+const errs = [];
+p.on('console', m => { if (m.type()==='error') errs.push(m.text()); });
+p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+await p.goto(url, { waitUntil: 'load' });
+await p.waitForTimeout(Number(process.env.WAIT || 2500));
+await p.screenshot({ path: out, fullPage: fullArg === 'full' });
+if (errs.length) console.log('ERRORS:\n' + errs.slice(0,20).join('\n'));
+else console.log('no console errors');
+await b.close();

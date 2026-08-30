@@ -1,0 +1,74 @@
+<!doctype html><html><head><meta charset="utf-8"><title>world preview</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh}
+#s{position:fixed;left:8px;top:8px;color:#fff;font:12px monospace;text-shadow:0 1px 2px #000;z-index:9}</style>
+</head><body><canvas id="c"></canvas><div id="s"></div>
+<script type="module">
+import { createGL } from '../../src/core/gl.js';
+import { buildAtlas } from '../../src/world/atlas.js';
+import { Renderer } from '../../src/render/renderer.js';
+import { World } from '../../src/world/world.js';
+import { Player } from '../../src/game/player.js';
+import { hashSeed } from '../../src/core/math.js';
+import { DEFAULT_SETTINGS } from '../../src/core/constants.js';
+
+const q = new URLSearchParams(location.search);
+const canvas = document.getElementById('c');
+const gl = createGL(canvas);
+buildAtlas();
+const r = new Renderer(gl, canvas);
+r.init();
+
+const world = new World(hashSeed(q.get('seed') || 'hyperion'), { shear: q.get('shear') || 'normal' });
+const settings = { ...DEFAULT_SETTINGS, renderDistance: Number(q.get('rd') || 4), fogDensity: Number(q.get('fog') ?? 1) };
+world.slice.w = Number(q.get('w') || 0.5);
+
+// force-generate a disc of chunks
+const R = settings.renderDistance;
+for (let dz=-R; dz<=R; dz++) for (let dx=-R; dx<=R; dx++) world.ensureChunk(dx, dz);
+let t0 = performance.now();
+while (world.generateOne()) {}
+const genMs = performance.now()-t0;
+
+const player = new Player(world);
+player.x = q.get('px') ? Number(q.get('px')) : 8.5;
+player.z = q.get('pz') ? Number(q.get('pz')) : 8.5;
+// find a spot the player can actually stand in on this slice
+{
+  let best = null;
+  for (let y = 84; y > 4; y--) {
+    if (player.canOccupy(world.slice.w, player.x, y, player.z) &&
+        !player.canOccupy(world.slice.w, player.x, y - 1.2, player.z)) { best = y; break; }
+  }
+  player.y = best ?? 60;
+}
+player.yaw = Number(q.get('yaw') || 0.7);
+player.pitch = Number(q.get('pitch') || 0.25);
+if (q.get('y')) player.y = Number(q.get('y'));
+
+if (q.get('py')) player.y = Number(q.get('py'));
+const camera = { x: player.x, y: player.eyeY, z: player.z, yaw: player.yaw, pitch: player.pitch, fov: settings.fov };
+const noCaps = q.get('caps') === '0';
+const noSolid = q.get('solid') === '0';
+let elapsed = 0;
+world.time = Number(q.get('time') || 0.35);
+
+function frame() {
+  elapsed += 0.016;
+  if (q.get('spin')) camera.yaw += 0.01;
+  if (q.get('scroll')) world.slice.w += 0.004;
+  camera.x = player.x; camera.y = player.eyeY; camera.z = player.z;
+  camera.yaw = player.yaw; camera.pitch = player.pitch;
+  r.render({
+    world, camera, settings, entities: [], particles: null,
+    highlight: null, heldItem: null, dt: 0.016, elapsed,
+    underwater: false, inLava: false, seamGlow: 0.4, showHand: false,
+    debugNoCaps: noCaps, debugNoSolid: noSolid, debugMode: Number(q.get('dbg')||0),
+  });
+  document.getElementById('s').textContent =
+    `gen ${genMs.toFixed(0)}ms  chunks ${world.chunks.size}  draws ${r.stats.drawCalls}  quads ${r.stats.quads}  w=${world.slice.w.toFixed(2)}  band=${world.slice.bandAt(camera.x,camera.z)}  y=${player.y.toFixed(1)}`;
+  requestAnimationFrame(frame);
+}
+frame();
+window.__ready = true;
+window.__world = world; window.__player = player; window.__r = r;
+</script></body></html>
