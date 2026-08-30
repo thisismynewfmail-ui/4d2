@@ -1,0 +1,11 @@
+{
+  "name": "4d-mc",
+  "version": "1.0.0",
+  "description": "4D-MC — a first-person four-dimensional voxel sandbox",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node tools/serve.js",
+    "dev": "node tools/serve.js"
+  }
+}
